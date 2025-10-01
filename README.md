@@ -1,5 +1,7 @@
-# Custom script to get live events from LiveSplit 
+# Custom Firebot script to get live events from LiveSplit 
 Creates a TCP connection to the [LiveSplit Remote Plugin](https://github.com/Lordmau5/LiveSplitRemotePlugin). Simply copy the livesplitEvents.js file into your Firebot scripts folder to user, or you can make a new one following the steps below. 
+
+Worth noting that the LiveSplit Remote Plugin *does* send the current timer data, which I have not yet integrated into the script in any meaningful way. 
 
 ### Setup
 1. Create a new repo based off this template (Click "Use this Template" above) or simply fork it
