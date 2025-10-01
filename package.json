@@ -1,0 +1,30 @@
+{
+  "name": "livesplit-events",
+  "scriptOutputName": "livesplitEvents",
+  "version": "1.0.0",
+  "description": "A custom script to get live events from the LiveSplit Remote Plugin",
+  "main": "",
+  "scripts": {
+    "build": "webpack",
+    "build:dev": "npm run build && npm run copy",
+    "copy": "node ./scripts/copy-build.js",
+    "test": "jest"
+  },
+  "author": "Oshimia",
+  "license": "GNU3",
+  "devDependencies": {
+    "@crowbartools/firebot-custom-scripts-types": "^5.60.1",
+    "@types/node": "^18.18.2",
+    "jest": "^29.7.0",
+    "terser-webpack-plugin": "^5.3.10",
+    "ts-jest": "^29.1.1",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "volta": {
+    "node": "18.18.2",
+    "npm": "10.2.4"
+  }
+}
