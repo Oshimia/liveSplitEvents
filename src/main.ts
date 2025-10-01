@@ -5,12 +5,22 @@ import * as net from 'net';
 let server: net.Server | null = null;
 let scriptLogger: Logger | null = null;
 
+const commandToEventMap: Record<string, { id: string; name: string; }> = {
+    'starttimer': { id: 'start', name: 'Start Timer' },
+    'pause':      { id: 'pause', name: 'Pause' },
+    'resume':     { id: 'resume', name: 'Resume' },
+    'reset':      { id: 'reset', name: 'Reset' },
+    'split':      { id: 'split', name: 'Split' },
+    'unsplit':    { id: 'unsplit', name: 'Undo Split' },
+    'skipsplit':  { id: 'skipsplit', name: 'Skip Split' }
+};
+
 const script: Firebot.CustomScript<{ host: string; port: number; }> = {
     getScriptManifest: () => {
         return {
-            name: "TCP Event Server",
-            description: "Starts a TCP server to listen for events from external programs and triggers a custom Firebot event.",
-            author: "User Request",
+            name: "LiveSplit Event Listener",
+            description: "Listens for commands from the LiveSplitRemote plugin and triggers Firebot events.",
+            author: "Oshimia",
             version: "1.0",
             firebotVersion: "5",
             startupOnly: true,
@@ -23,13 +33,13 @@ const script: Firebot.CustomScript<{ host: string; port: number; }> = {
                 type: "string",
                 default: "127.0.0.1",
                 description: "Host/IP Address",
-                secondaryDescription: "The IP address for the TCP server to listen on. '127.0.0.1' is recommended for local applications on the same machine."
+                secondaryDescription: "The IP address for the TCP server to listen on. '127.0.0.1' is recommended."
             },
             port: {
                 type: "number",
                 default: 16834,
                 description: "Port",
-                secondaryDescription: "The port for the TCP server to listen on. Ensure it's not used by another application."
+                secondaryDescription: "The port for the LiveSplitRemote plugin. The default is 16834."
             }
         };
     },
@@ -41,68 +51,61 @@ const script: Firebot.CustomScript<{ host: string; port: number; }> = {
         scriptLogger = logger;
 
         eventManager.registerEventSource({
-            id: 'livesplit-events',
-            name: 'Livesplit Events',
-            events: [
-                {
-                    id: 'data-received',
-                    name: 'Data Received',
-                    description: 'Triggered when data is received by the TCP server.',
-                    manualMetadata: {
-                        tcpData: { "exampleKey": "exampleValue" }
-                    }
-                }
-            ]
+            id: 'livesplit-server',
+            name: 'LiveSplit',
+            events: Object.entries(commandToEventMap).map(([command, eventInfo]) => ({
+                id: eventInfo.id,
+                name: `LiveSplit: ${eventInfo.name}`,
+                description: `Triggered when LiveSplit sends the '${command}' command.`
+            }))
         });
 
         try {
             server = net.createServer((socket: net.Socket) => {
-                logger.info(`TCP client connected from ${socket.remoteAddress}:${socket.remotePort}`);
+                logger.info(`LiveSplitRemote client connected from ${socket.remoteAddress}:${socket.remotePort}`);
 
                 socket.on('data', (data) => {
                     const message = data.toString().trim();
-                    logger.info(`Received TCP data: ${message}`);
+                    const commands = message.split('\n');
 
-                    const messages = message.split('\n');
-                    messages.forEach(msg => {
-                        if (!msg) return;
-                        try {
-                            const eventData = JSON.parse(msg);
+                    commands.forEach(command => {
+                        const cleanCommand = command.trim().toLowerCase();
+                        if (!cleanCommand) return;
+
+                        const eventInfo = commandToEventMap[cleanCommand];
+
+                        if (eventInfo) {
+                            logger.info(`Received LiveSplit command: ${cleanCommand}. Triggering event: ${eventInfo.name}`);
                             eventManager.triggerEvent(
-                                'tcp-server',
-                                'data-received',
-                                {
-                                    username: 'TCPServer',
-                                    tcpData: eventData
-                                }
+                                'livesplit-server',
+                                eventInfo.id,
+                                { username: 'LiveSplit' }
                             );
-                        } catch (e) {
-                            logger.error(`Failed to parse incoming TCP data as JSON: "${msg}"`);
                         }
                     });
                 });
 
                 socket.on('close', () => {
-                    logger.info(`TCP client disconnected.`);
+                    logger.info(`LiveSplitRemote client disconnected.`);
                 });
 
                 socket.on('error', (err) => {
-                    logger.error(`TCP socket error: ${err.message}`);
+                    logger.error(`LiveSplitRemote socket error: ${err.message}`);
                 });
             });
 
             server.listen(port, host, () => {
-                logger.info(`TCP server is listening for events on ${host}:${port}`);
+                logger.info(`TCP server for LiveSplit is listening on ${host}:${port}`);
             });
         } catch (e: any) {
-            logger.error(`Failed to start TCP server: ${e.message}`);
+            logger.error(`Failed to start TCP server for LiveSplit: ${e.message}`);
         }
     },
 
     stop: () => {
         if (server) {
             server.close(() => {
-                scriptLogger?.info('TCP server has been shut down.');
+                scriptLogger?.info('LiveSplit TCP server has been shut down.');
             });
             server = null;
         }
